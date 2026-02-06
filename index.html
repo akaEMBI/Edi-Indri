@@ -5,16 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CaptureHistory - Gallery</title>
     <style>
-        /* BASE & THEME */
+        /* --- CSS TETAP SAMA (STYLE LAMA) --- */
         :root { --bg: #000000; --card: #111111; --accent: #ffffff; }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: var(--bg); color: #fff; font-family: -apple-system, sans-serif; overflow-x: hidden; }
 
-        /* HEADER */
         header { padding: 20px; text-align: center; background: rgba(0,0,0,0.8); backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 50; border-bottom: 1px solid #222; }
         header h1 { font-size: 0.9rem; letter-spacing: 4px; font-weight: 300; opacity: 0.9; }
 
-        /* SLIDER LAYOUT */
         .section { margin-top: 30px; opacity: 0; animation: fadeUp 0.6s forwards; }
         .sec-title { padding: 0 20px 15px; font-size: 0.7rem; text-transform: uppercase; color: #666; letter-spacing: 2px; }
         
@@ -28,10 +26,8 @@
             transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
-        /* MEDIA STYLING */
         .card img { width: 100%; height: 100%; object-fit: cover; }
         
-        /* Icon Play untuk Video */
         .play-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.2); display: flex; justify-content: center; align-items: center;
@@ -42,13 +38,19 @@
         }
         .play-icon::after { content:''; margin-left:4px; border-left:14px solid #fff; border-top:9px solid transparent; border-bottom:9px solid transparent; }
 
-        /* MODAL */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; flex-direction: column; }
-        .modal-body { flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; }
-        .modal-body img, .modal-body video { max-width: 100%; max-height: 80%; object-fit: contain; }
+        .modal-body { flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; position: relative; }
+        
+        /* FIX GAMBAR MODAL AGAR TIDAK HILANG */
+        .modal-body img, .modal-body video { 
+            max-width: 100%; max-height: 80vh; 
+            object-fit: contain; 
+            display: block; /* Pastikan display block */
+        }
+        
         .modal-close { position: absolute; top: 20px; right: 20px; font-size: 2.5rem; color: #fff; z-index: 102; cursor: pointer; }
         
-        .modal-footer { padding: 30px; text-align: center; }
+        .modal-footer { padding: 30px; text-align: center; background: #000; z-index: 101; }
         .btn-dl {
             background: #fff; color: #000; text-decoration: none; padding: 15px 40px; 
             border-radius: 30px; font-weight: bold; font-size: 0.9rem; display: inline-block;
@@ -76,7 +78,7 @@
 </div>
 
 <script>
-    // 1. MASUKKAN URL APPS SCRIPT ANDA DI SINI
+    // MASUKKAN URL APPS SCRIPT ANDA DI SINI
     const API_URL = "https://script.google.com/macros/s/AKfycbzkSaiupIzehCI_w2a3UAP252GNqvAELpkpxeyOw_H3vECEXpExetL2r8XeMTbdznhO4Q/exec";
 
     async function init() {
@@ -86,35 +88,41 @@
             const app = document.getElementById('app');
             app.innerHTML = '';
 
-            // --- PERUBAHAN DI SINI: URUTAN KATEGORI ---
-            // Urutan: Prints (Atas), Originals (Tengah), Animated (Bawah)
+            // URUTAN SESUAI REQUEST: Prints -> Originals -> Animated
             const categories = ["Prints", "Originals", "Animated"];
 
             categories.forEach(cat => {
-                // Pastikan data kategori ada sebelum ditampilkan
                 if(data[cat] && data[cat].length > 0) {
                     const isVideo = (cat === "Animated");
                     const section = document.createElement('div');
                     section.className = 'section';
                     
                     let itemsHtml = '';
-                    // Membalik urutan foto agar yang terbaru muncul di kiri (opsional, hapus .reverse() jika tidak mau)
-                    data[cat].reverse().forEach(item => {
+                    
+                    // HAPUS .reverse() AGAR TIDAK RUSAK/URUTAN NORMAL
+                    data[cat].forEach(item => {
                         const fileId = item.id;
-                        // Link Thumbnail (Otomatis dari Google)
-                        const thumbUrl = `https://drive.google.com/thumbnail?sz=w600&id=${fileId}`;
-                        // Link View/Download (Direct Stream)
-                        const viewUrl = `https://drive.google.com/uc?export=download&id=${fileId}`; 
                         
+                        // 1. Link Kartu Depan (Thumbnail Kecil)
+                        const thumbUrl = `https://drive.google.com/thumbnail?sz=w600&id=${fileId}`;
+                        
+                        // 2. Link Download Asli (Untuk Tombol Simpan)
+                        const rawDlUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                        
+                        // 3. Link View Modal (FIX GAMBAR HILANG)
+                        // Jika Video -> Pakai link download/stream
+                        // Jika Foto -> Pakai link Thumbnail High Res (w1200) agar pasti muncul
+                        const viewUrl = isVideo ? rawDlUrl : `https://drive.google.com/thumbnail?sz=w1200&id=${fileId}`;
+
                         if(isVideo) {
                             itemsHtml += `
-                                <div class="card" onclick="openModal('${viewUrl}', true)">
+                                <div class="card" onclick="openModal('${viewUrl}', '${rawDlUrl}', true)">
                                     <img src="${thumbUrl}" loading="lazy" alt="Video Thumb">
                                     <div class="play-overlay"><div class="play-icon"></div></div>
                                 </div>`;
                         } else {
                             itemsHtml += `
-                                <div class="card" onclick="openModal('${viewUrl}', false)">
+                                <div class="card" onclick="openModal('${viewUrl}', '${rawDlUrl}', false)">
                                     <img src="${thumbUrl}" loading="lazy" alt="Foto">
                                 </div>`;
                         }
@@ -131,29 +139,31 @@
             initObserver();
 
         } catch (e) {
-            console.error(e); // Debugging
+            console.error(e);
             document.querySelector('.loading').innerText = "GAGAL MEMUAT. CEK KONEKSI.";
         }
     }
 
-    function openModal(url, isVideo) {
+    // FUNGSI MODAL DIPERBAIKI
+    function openModal(viewUrl, dlUrl, isVideo) {
         const modal = document.getElementById('modal');
         const view = document.getElementById('modalView');
         const btn = document.getElementById('dlBtn');
 
-        view.innerHTML = '';
+        view.innerHTML = ''; // Reset
 
         if(isVideo) {
             // Video Player
-            view.innerHTML = `<video src="${url}" controls autoplay loop playsinline style="width:100%"></video>`;
+            view.innerHTML = `<video src="${viewUrl}" controls autoplay loop playsinline style="width:100%"></video>`;
         } else {
             // Image Viewer
-            view.innerHTML = `<img src="${url}">`;
+            view.innerHTML = `<img src="${viewUrl}" alt="Preview Full">`;
         }
 
-        // Logic Download Native
-        btn.href = url;
+        // Setup Tombol Download (Mengarah ke Link Download Asli)
+        btn.href = dlUrl;
         btn.onclick = (e) => {
+            // Native Browser Download
             btn.innerText = "MEMPROSES...";
             setTimeout(() => btn.innerText = "SIMPAN KE GALERI", 3000);
         };
@@ -164,7 +174,7 @@
 
     function closeModal() {
         document.getElementById('modal').style.display = 'none';
-        document.getElementById('modalView').innerHTML = '';
+        document.getElementById('modalView').innerHTML = ''; // Stop video/clear img
         document.body.style.overflow = 'auto';
     }
 
