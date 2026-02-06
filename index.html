@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CaptureHistory - Gallery</title>
     <style>
-        /* --- CSS TETAP SAMA (STYLE LAMA) --- */
+        /* --- CSS STYLE --- */
         :root { --bg: #000000; --card: #111111; --accent: #ffffff; }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: var(--bg); color: #fff; font-family: -apple-system, sans-serif; overflow-x: hidden; }
@@ -25,9 +25,9 @@
             position: relative; border: 1px solid #222;
             transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
         }
-
         .card img { width: 100%; height: 100%; object-fit: cover; }
         
+        /* Icon Play */
         .play-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.2); display: flex; justify-content: center; align-items: center;
@@ -38,19 +38,26 @@
         }
         .play-icon::after { content:''; margin-left:4px; border-left:14px solid #fff; border-top:9px solid transparent; border-bottom:9px solid transparent; }
 
+        /* MODAL STYLE */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; flex-direction: column; }
-        .modal-body { flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; position: relative; }
         
-        /* FIX GAMBAR MODAL AGAR TIDAK HILANG */
+        /* Container Media di Tengah */
+        .modal-body { 
+            flex: 1; display: flex; justify-content: center; align-items: center; 
+            width: 100%; padding: 20px; 
+        }
+        
+        /* Style Gambar/Video di Modal agar TIDAK HILANG */
         .modal-body img, .modal-body video { 
-            max-width: 100%; max-height: 80vh; 
+            max-width: 100%; 
+            max-height: 80vh; 
             object-fit: contain; 
-            display: block; /* Pastikan display block */
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
         
         .modal-close { position: absolute; top: 20px; right: 20px; font-size: 2.5rem; color: #fff; z-index: 102; cursor: pointer; }
-        
         .modal-footer { padding: 30px; text-align: center; background: #000; z-index: 101; }
+        
         .btn-dl {
             background: #fff; color: #000; text-decoration: none; padding: 15px 40px; 
             border-radius: 30px; font-weight: bold; font-size: 0.9rem; display: inline-block;
@@ -78,7 +85,7 @@
 </div>
 
 <script>
-    // MASUKKAN URL APPS SCRIPT ANDA DI SINI
+    // 1. MASUKKAN URL APPS SCRIPT ANDA DI SINI
     const API_URL = "https://script.google.com/macros/s/AKfycbzkSaiupIzehCI_w2a3UAP252GNqvAELpkpxeyOw_H3vECEXpExetL2r8XeMTbdznhO4Q/exec";
 
     async function init() {
@@ -88,7 +95,7 @@
             const app = document.getElementById('app');
             app.innerHTML = '';
 
-            // URUTAN SESUAI REQUEST: Prints -> Originals -> Animated
+            // URUTAN KATEGORI
             const categories = ["Prints", "Originals", "Animated"];
 
             categories.forEach(cat => {
@@ -99,30 +106,28 @@
                     
                     let itemsHtml = '';
                     
-                    // HAPUS .reverse() AGAR TIDAK RUSAK/URUTAN NORMAL
                     data[cat].forEach(item => {
                         const fileId = item.id;
                         
-                        // 1. Link Kartu Depan (Thumbnail Kecil)
+                        // Link Thumbnail (Hanya untuk tampilan kartu kecil)
                         const thumbUrl = `https://drive.google.com/thumbnail?sz=w600&id=${fileId}`;
                         
-                        // 2. Link Download Asli (Untuk Tombol Simpan)
-                        const rawDlUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+                        // Link Download Asli (Untuk tombol Simpan)
+                        const dlUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
                         
-                        // 3. Link View Modal (FIX GAMBAR HILANG)
-                        // Jika Video -> Pakai link download/stream
-                        // Jika Foto -> Pakai link Thumbnail High Res (w1200) agar pasti muncul
-                        const viewUrl = isVideo ? rawDlUrl : `https://drive.google.com/thumbnail?sz=w1200&id=${fileId}`;
+                        // --- PERBAIKAN LINK VIEW ---
+                        // Video & Foto sekarang menggunakan 'export=view' agar pasti muncul
+                        const viewUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
 
                         if(isVideo) {
                             itemsHtml += `
-                                <div class="card" onclick="openModal('${viewUrl}', '${rawDlUrl}', true)">
+                                <div class="card" onclick="openModal('${viewUrl}', '${dlUrl}', true)">
                                     <img src="${thumbUrl}" loading="lazy" alt="Video Thumb">
                                     <div class="play-overlay"><div class="play-icon"></div></div>
                                 </div>`;
                         } else {
                             itemsHtml += `
-                                <div class="card" onclick="openModal('${viewUrl}', '${rawDlUrl}', false)">
+                                <div class="card" onclick="openModal('${viewUrl}', '${dlUrl}', false)">
                                     <img src="${thumbUrl}" loading="lazy" alt="Foto">
                                 </div>`;
                         }
@@ -144,26 +149,25 @@
         }
     }
 
-    // FUNGSI MODAL DIPERBAIKI
+    // LOGIKA MODAL
     function openModal(viewUrl, dlUrl, isVideo) {
         const modal = document.getElementById('modal');
         const view = document.getElementById('modalView');
         const btn = document.getElementById('dlBtn');
 
-        view.innerHTML = ''; // Reset
+        view.innerHTML = '<div style="color:#666">Memuat...</div>'; // Teks loading sementara
 
         if(isVideo) {
             // Video Player
             view.innerHTML = `<video src="${viewUrl}" controls autoplay loop playsinline style="width:100%"></video>`;
         } else {
-            // Image Viewer
-            view.innerHTML = `<img src="${viewUrl}" alt="Preview Full">`;
+            // Image Viewer (FIXED: Menggunakan link View asli)
+            view.innerHTML = `<img src="${viewUrl}" alt="Preview Full" onload="this.style.opacity=1" style="opacity:0; transition:opacity 0.3s">`;
         }
 
-        // Setup Tombol Download (Mengarah ke Link Download Asli)
+        // Tombol Download
         btn.href = dlUrl;
         btn.onclick = (e) => {
-            // Native Browser Download
             btn.innerText = "MEMPROSES...";
             setTimeout(() => btn.innerText = "SIMPAN KE GALERI", 3000);
         };
@@ -174,7 +178,7 @@
 
     function closeModal() {
         document.getElementById('modal').style.display = 'none';
-        document.getElementById('modalView').innerHTML = ''; // Stop video/clear img
+        document.getElementById('modalView').innerHTML = ''; 
         document.body.style.overflow = 'auto';
     }
 
