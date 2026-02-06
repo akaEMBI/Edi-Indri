@@ -2,24 +2,36 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Photobooth Gallery</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CaptureHistory Photobooth</title>
     <style>
+        /* Base Styling */
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background-color: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        
-        header { padding: 30px 20px; text-align: center; border-bottom: 1px solid #1a1a1a; }
-        header h1 { font-size: 1rem; letter-spacing: 4px; font-weight: 300; color: #eee; }
+        body { 
+            background-color: #000; 
+            color: #fff; 
+            font-family: -apple-system, system-ui, sans-serif; 
+            overflow-x: hidden;
+        }
 
-        .category-section { margin-top: 25px; }
-        .category-title { padding-left: 20px; margin-bottom: 15px; font-size: 0.75rem; text-transform: uppercase; color: #666; letter-spacing: 2px; }
+        header { 
+            padding: 25px; 
+            text-align: center; 
+            border-bottom: 1px solid #1a1a1a;
+            position: sticky; top: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 100;
+        }
+        header h1 { font-size: 0.9rem; letter-spacing: 5px; font-weight: 300; }
 
-        /* Slider Logic */
+        /* Gallery Sections */
+        .category-section { margin-top: 30px; }
+        .category-title { padding-left: 20px; margin-bottom: 15px; font-size: 0.7rem; text-transform: uppercase; color: #555; letter-spacing: 2px; }
+
+        /* Smooth Slider */
         .photo-slider {
             display: flex;
             overflow-x: auto;
             scroll-snap-type: x mandatory;
-            padding: 0 20px 20px;
+            padding: 0 20px 30px;
             gap: 15px;
             scrollbar-width: none;
         }
@@ -28,26 +40,42 @@
         .photo-card {
             flex: 0 0 80%;
             scroll-snap-align: center;
-            border-radius: 15px;
+            border-radius: 12px;
             background: #0a0a0a;
             aspect-ratio: 3/4;
             position: relative;
             overflow: hidden;
-            transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
             border: 1px solid #1a1a1a;
         }
 
-        .photo-card img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.8s ease; }
+        .photo-card img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s; }
 
-        .btn-download {
-            position: absolute; bottom: 15px; right: 15px;
-            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);
-            color: #fff; border: 1px solid rgba(255,255,255,0.2);
-            padding: 8px 16px; border-radius: 30px; font-size: 0.7rem; text-decoration: none;
+        .btn-view {
+            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
+            background: rgba(255,255,255,0.1); backdrop-filter: blur(5px);
+            color: #fff; border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 20px; border-radius: 20px; font-size: 0.7rem;
         }
 
-        /* Loading Animation */
-        .loader { text-align: center; padding: 50px; color: #444; font-size: 0.8rem; }
+        /* Fullscreen Modal */
+        .photo-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 1000; justify-content: center; align-items: center; flex-direction: column;
+        }
+
+        .photo-modal img { max-width: 95%; max-height: 75%; border-radius: 8px; object-fit: contain; }
+
+        .modal-close { position: absolute; top: 20px; right: 20px; font-size: 2rem; color: #fff; padding: 10px; }
+
+        .modal-controls { margin-top: 30px; width: 100%; padding: 0 20px; display: flex; flex-direction: column; gap: 10px; }
+
+        .btn-main {
+            background: #fff; color: #000; text-align: center; padding: 15px; 
+            border-radius: 12px; font-weight: bold; text-decoration: none; font-size: 0.9rem;
+        }
+
+        .loader { text-align: center; padding: 100px 20px; color: #444; font-size: 0.8rem; letter-spacing: 1px; }
     </style>
 </head>
 <body>
@@ -55,22 +83,30 @@
 <header><h1>CAPTURE HISTORY</h1></header>
 
 <div id="main-content">
-    <div class="loader" id="loader">Sedang mengambil kenangan...</div>
+    <div class="loader" id="loader">MENGAMBIL DATA FOTO...</div>
+</div>
+
+<div id="photoModal" class="photo-modal">
+    <span class="modal-close" onclick="closeModal()">&times;</span>
+    <img id="modalImg" src="">
+    <div class="modal-controls">
+        <a id="downloadBtn" href="#" class="btn-main">SIMPAN KE GALERI</a>
+    </div>
 </div>
 
 <script>
-    // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT KAMU DI SINI
+    // 1. KONFIGURASI: Ganti dengan URL hasil Deploy Google Apps Script kamu
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxKKUB5tkHaHqc-d4xzf-48r-14BonL2BnVq3HlzHSLvEDl3JyabQpXA9pwTpLRMwkojA/exec";
 
+    // 2. AMBIL DATA DARI GOOGLE DRIVE
     async function initGallery() {
         try {
             const response = await fetch(SCRIPT_URL);
             const data = await response.json();
             
             const mainContent = document.getElementById('main-content');
-            mainContent.innerHTML = ''; // Hapus loader
+            mainContent.innerHTML = '';
 
-            // Loop untuk setiap kategori: Print, Original, GIF
             Object.keys(data).forEach(cat => {
                 if (data[cat].length > 0) {
                     const section = document.createElement('div');
@@ -85,30 +121,78 @@
                     data[cat].forEach(url => {
                         const card = document.createElement('div');
                         card.className = 'photo-card';
+                        card.onclick = () => openModal(url);
                         card.innerHTML = `
                             <img src="${url}" loading="lazy" onload="this.style.opacity=1">
-                            <a href="${url}" target="_blank" class="btn-download">SIMPAN</a>
+                            <div class="btn-view">LIHAT</div>
                         `;
                         slider.appendChild(card);
                     });
                 }
             });
 
-            startIntersectionObserver();
-
-        } catch (error) {
-            document.getElementById('loader').innerText = "Gagal memuat foto. Pastikan internet stabil.";
-            console.error(error);
+            setupObserver();
+        } catch (e) {
+            document.getElementById('loader').innerText = "Koneksi Bermasalah. Coba Refresh.";
         }
     }
 
-    function startIntersectionObserver() {
+    // 3. LOGIKA DOWNLOAD (Blob Method agar tidak buka tab baru)
+    async function forceDownload(url) {
+        const btn = document.getElementById('downloadBtn');
+        const originalText = btn.innerText;
+        btn.innerText = "MENGUNDUH...";
+        
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = "CaptureHistory_" + Date.now() + (url.includes("gif") ? ".gif" : ".jpg");
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+            // Fallback jika CORS bermasalah
+            window.open(url, '_blank');
+        } finally {
+            btn.innerText = originalText;
+        }
+    }
+
+    // 4. MODAL CONTROL
+    function openModal(url) {
+        const modal = document.getElementById('photoModal');
+        const img = document.getElementById('modalImg');
+        const btn = document.getElementById('downloadBtn');
+
+        img.src = url;
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden'; // Lock scroll
+
+        btn.onclick = (e) => {
+            e.preventDefault();
+            forceDownload(url);
+        };
+    }
+
+    function closeModal() {
+        document.getElementById('photoModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+        document.getElementById('modalImg').src = '';
+    }
+
+    // 5. ANIMASI GESER (Intersection Observer)
+    function setupObserver() {
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     entry.target.style.transform = "scale(1)";
                 } else {
-                    entry.target.style.transform = "scale(0.92)";
+                    entry.target.style.transform = "scale(0.9)";
                 }
             });
         }, { threshold: 0.6 });
