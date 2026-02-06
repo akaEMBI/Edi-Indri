@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photobooth Gallery</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        
+        header { padding: 30px 20px; text-align: center; border-bottom: 1px solid #1a1a1a; }
+        header h1 { font-size: 1rem; letter-spacing: 4px; font-weight: 300; color: #eee; }
+
+        .category-section { margin-top: 25px; }
+        .category-title { padding-left: 20px; margin-bottom: 15px; font-size: 0.75rem; text-transform: uppercase; color: #666; letter-spacing: 2px; }
+
+        /* Slider Logic */
+        .photo-slider {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            padding: 0 20px 20px;
+            gap: 15px;
+            scrollbar-width: none;
+        }
+        .photo-slider::-webkit-scrollbar { display: none; }
+
+        .photo-card {
+            flex: 0 0 80%;
+            scroll-snap-align: center;
+            border-radius: 15px;
+            background: #0a0a0a;
+            aspect-ratio: 3/4;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+            border: 1px solid #1a1a1a;
+        }
+
+        .photo-card img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.8s ease; }
+
+        .btn-download {
+            position: absolute; bottom: 15px; right: 15px;
+            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px);
+            color: #fff; border: 1px solid rgba(255,255,255,0.2);
+            padding: 8px 16px; border-radius: 30px; font-size: 0.7rem; text-decoration: none;
+        }
+
+        /* Loading Animation */
+        .loader { text-align: center; padding: 50px; color: #444; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+<header><h1>CAPTURE HISTORY</h1></header>
+
+<div id="main-content">
+    <div class="loader" id="loader">Sedang mengambil kenangan...</div>
+</div>
+
+<script>
+    // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT KAMU DI SINI
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxKKUB5tkHaHqc-d4xzf-48r-14BonL2BnVq3HlzHSLvEDl3JyabQpXA9pwTpLRMwkojA/exec";
+
+    async function initGallery() {
+        try {
+            const response = await fetch(SCRIPT_URL);
+            const data = await response.json();
+            
+            const mainContent = document.getElementById('main-content');
+            mainContent.innerHTML = ''; // Hapus loader
+
+            // Loop untuk setiap kategori: Print, Original, GIF
+            Object.keys(data).forEach(cat => {
+                if (data[cat].length > 0) {
+                    const section = document.createElement('div');
+                    section.className = 'category-section';
+                    section.innerHTML = `
+                        <div class="category-title">${cat}</div>
+                        <div class="photo-slider" id="slider-${cat}"></div>
+                    `;
+                    mainContent.appendChild(section);
+
+                    const slider = document.getElementById(`slider-${cat}`);
+                    data[cat].forEach(url => {
+                        const card = document.createElement('div');
+                        card.className = 'photo-card';
+                        card.innerHTML = `
+                            <img src="${url}" loading="lazy" onload="this.style.opacity=1">
+                            <a href="${url}" target="_blank" class="btn-download">SIMPAN</a>
+                        `;
+                        slider.appendChild(card);
+                    });
+                }
+            });
+
+            startIntersectionObserver();
+
+        } catch (error) {
+            document.getElementById('loader').innerText = "Gagal memuat foto. Pastikan internet stabil.";
+            console.error(error);
+        }
+    }
+
+    function startIntersectionObserver() {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.transform = "scale(1)";
+                } else {
+                    entry.target.style.transform = "scale(0.92)";
+                }
+            });
+        }, { threshold: 0.6 });
+
+        document.querySelectorAll('.photo-card').forEach(card => observer.observe(card));
+    }
+
+    initGallery();
+</script>
+</body>
+</html>
