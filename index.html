@@ -3,204 +3,317 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CaptureHistory Photobooth</title>
+    <title>CaptureHistory - Gallery</title>
     <style>
-        /* Base Styling */
+        /* CSS RESET & VARS */
+        :root { --bg: #050505; --card-bg: #121212; --accent: #fff; }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
         body { 
-            background-color: #000; 
-            color: #fff; 
-            font-family: -apple-system, system-ui, sans-serif; 
+            background-color: var(--bg); color: #fff; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             overflow-x: hidden;
         }
 
+        /* HEADER */
         header { 
-            padding: 25px; 
-            text-align: center; 
-            border-bottom: 1px solid #1a1a1a;
-            position: sticky; top: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 100;
+            padding: 20px; text-align: center; 
+            background: rgba(5,5,5,0.9); backdrop-filter: blur(10px);
+            position: sticky; top: 0; z-index: 50; border-bottom: 1px solid #222;
         }
-        header h1 { font-size: 0.9rem; letter-spacing: 5px; font-weight: 300; }
+        header h1 { font-size: 0.9rem; letter-spacing: 4px; font-weight: 400; opacity: 0.9; }
 
-        /* Gallery Sections */
-        .category-section { margin-top: 30px; }
-        .category-title { padding-left: 20px; margin-bottom: 15px; font-size: 0.7rem; text-transform: uppercase; color: #555; letter-spacing: 2px; }
+        /* GALLERY LAYOUT */
+        .category-section { margin-top: 25px; opacity: 0; animation: fadeIn 0.6s forwards; }
+        .category-title { 
+            padding: 0 20px 10px; font-size: 0.7rem; 
+            text-transform: uppercase; color: #666; letter-spacing: 1.5px; 
+        }
 
-        /* Smooth Slider */
         .photo-slider {
-            display: flex;
-            overflow-x: auto;
-            scroll-snap-type: x mandatory;
-            padding: 0 20px 30px;
-            gap: 15px;
-            scrollbar-width: none;
+            display: flex; gap: 12px; padding: 0 20px 30px;
+            overflow-x: auto; scroll-snap-type: x mandatory;
+            scrollbar-width: none; /* Firefox */
         }
-        .photo-slider::-webkit-scrollbar { display: none; }
+        .photo-slider::-webkit-scrollbar { display: none; /* Chrome */ }
 
         .photo-card {
-            flex: 0 0 80%;
-            scroll-snap-align: center;
-            border-radius: 12px;
-            background: #0a0a0a;
+            flex: 0 0 80%; /* Lebar card */
             aspect-ratio: 3/4;
-            position: relative;
+            scroll-snap-align: center;
+            background: var(--card-bg);
+            border-radius: 12px;
             overflow: hidden;
-            transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
-            border: 1px solid #1a1a1a;
+            position: relative;
+            border: 1px solid #222;
+            transition: transform 0.3s ease;
         }
 
-        .photo-card img { width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s; }
-
-        .btn-view {
-            position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
-            background: rgba(255,255,255,0.1); backdrop-filter: blur(5px);
-            color: #fff; border: 1px solid rgba(255,255,255,0.3);
-            padding: 8px 20px; border-radius: 20px; font-size: 0.7rem;
+        /* THUMBNAIL LOGIC */
+        .photo-card img, .photo-card video {
+            width: 100%; height: 100%; object-fit: cover;
+            display: block;
+        }
+        
+        /* Overlay icon untuk video */
+        .play-icon {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 40px; height: 40px; background: rgba(0,0,0,0.5);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            border: 1px solid rgba(255,255,255,0.3); pointer-events: none;
+        }
+        .play-icon::after {
+            content: ''; display: block; width: 0; height: 0;
+            border-left: 12px solid #fff; border-top: 8px solid transparent; border-bottom: 8px solid transparent;
+            margin-left: 4px;
         }
 
-        /* Fullscreen Modal */
-        .photo-modal {
+        /* MODAL */
+        .modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 1000; justify-content: center; align-items: center; flex-direction: column;
+            background: #000; z-index: 100; flex-direction: column;
+            justify-content: center; align-items: center;
+        }
+        
+        .modal-content {
+            width: 100%; height: 75%; display: flex; 
+            justify-content: center; align-items: center;
+        }
+        .modal-content img, .modal-content video {
+            max-width: 100%; max-height: 100%; object-fit: contain;
         }
 
-        .photo-modal img { max-width: 95%; max-height: 75%; border-radius: 8px; object-fit: contain; }
-
-        .modal-close { position: absolute; top: 20px; right: 20px; font-size: 2rem; color: #fff; padding: 10px; }
-
-        .modal-controls { margin-top: 30px; width: 100%; padding: 0 20px; display: flex; flex-direction: column; gap: 10px; }
-
-        .btn-main {
-            background: #fff; color: #000; text-align: center; padding: 15px; 
-            border-radius: 12px; font-weight: bold; text-decoration: none; font-size: 0.9rem;
+        .modal-close {
+            position: absolute; top: 20px; right: 20px;
+            font-size: 2rem; color: #fff; padding: 10px; cursor: pointer; z-index: 101;
         }
 
-        .loader { text-align: center; padding: 100px 20px; color: #444; font-size: 0.8rem; letter-spacing: 1px; }
+        .modal-actions {
+            height: 15%; width: 100%; display: flex; 
+            justify-content: center; align-items: center; padding: 0 20px;
+        }
+
+        .btn-download {
+            background: #fff; color: #000;
+            padding: 14px 30px; border-radius: 30px;
+            font-weight: 700; font-size: 0.9rem;
+            text-decoration: none; display: flex; align-items: center; gap: 8px;
+            transition: transform 0.1s;
+        }
+        .btn-download:active { transform: scale(0.95); }
+
+        /* Loader */
+        .loading-text { text-align: center; padding: 50px; color: #444; font-size: 0.8rem; }
+        
+        @keyframes fadeIn { to { opacity: 1; } }
     </style>
 </head>
 <body>
 
-<header><h1>CAPTURE HISTORY</h1></header>
+<header>
+    <h1>CAPTURE HISTORY</h1>
+</header>
 
-<div id="main-content">
-    <div class="loader" id="loader">MENGAMBIL DATA FOTO...</div>
+<div id="gallery-container">
+    <div class="loading-text" id="status-msg">MEMUAT GALERI...</div>
 </div>
 
-<div id="photoModal" class="photo-modal">
-    <span class="modal-close" onclick="closeModal()">&times;</span>
-    <img id="modalImg" src="">
-    <div class="modal-controls">
-        <a id="downloadBtn" href="#" class="btn-main">SIMPAN KE GALERI</a>
+<div id="photoModal" class="modal">
+    <div class="modal-close" onclick="closeModal()">&times;</div>
+    
+    <div class="modal-content" id="modal-media-wrapper">
+        </div>
+
+    <div class="modal-actions">
+        <a href="#" id="downloadBtn" class="btn-download">SIMPAN</a>
     </div>
 </div>
 
 <script>
-    // 1. KONFIGURASI: Ganti dengan URL hasil Deploy Google Apps Script kamu
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxKKUB5tkHaHqc-d4xzf-48r-14BonL2BnVq3HlzHSLvEDl3JyabQpXA9pwTpLRMwkojA/exec";
+    // 1. GANTI URL INI DENGAN URL APPS SCRIPT ANDA
+    const API_URL = "https://script.google.com/macros/s/AKfycbwws2HCAcG0nPY_0eVe3ZE6hEcaE4IY5XXvqg_K2PFHjVMpW3J71A0CzIXbpB_VpVZ2kg/exec";
 
-    // 2. AMBIL DATA DARI GOOGLE DRIVE
-    async function initGallery() {
+    // Kategori sesuai folder di Google Drive
+    const CATEGORIES = ["Animated", "Originals", "Prints"];
+
+    async function initApp() {
         try {
-            const response = await fetch(SCRIPT_URL);
+            const response = await fetch(API_URL);
             const data = await response.json();
-            
-            const mainContent = document.getElementById('main-content');
-            mainContent.innerHTML = '';
+            const container = document.getElementById('gallery-container');
+            container.innerHTML = '';
 
-            Object.keys(data).forEach(cat => {
-                if (data[cat].length > 0) {
-                    const section = document.createElement('div');
-                    section.className = 'category-section';
-                    section.innerHTML = `
-                        <div class="category-title">${cat}</div>
-                        <div class="photo-slider" id="slider-${cat}"></div>
-                    `;
-                    mainContent.appendChild(section);
-
-                    const slider = document.getElementById(`slider-${cat}`);
-                    data[cat].forEach(url => {
-                        const card = document.createElement('div');
-                        card.className = 'photo-card';
-                        card.onclick = () => openModal(url);
-                        card.innerHTML = `
-                            <img src="${url}" loading="lazy" onload="this.style.opacity=1">
-                            <div class="btn-view">LIHAT</div>
-                        `;
-                        slider.appendChild(card);
-                    });
+            CATEGORIES.forEach(cat => {
+                // Cek jika kategori ada datanya
+                if (data[cat] && data[cat].length > 0) {
+                    renderSection(container, cat, data[cat]);
                 }
             });
 
-            setupObserver();
-        } catch (e) {
-            document.getElementById('loader').innerText = "Koneksi Bermasalah. Coba Refresh.";
+            // Jalankan animasi scroll
+            initObserver();
+
+        } catch (err) {
+            document.getElementById('status-msg').innerText = "Gagal memuat. Periksa koneksi internet.";
+            console.error(err);
         }
     }
 
-    // 3. LOGIKA DOWNLOAD (Blob Method agar tidak buka tab baru)
-    async function forceDownload(url) {
-        const btn = document.getElementById('downloadBtn');
-        const originalText = btn.innerText;
-        btn.innerText = "MENGUNDUH...";
+    function renderSection(container, categoryName, urls) {
+        // Buat Judul
+        const title = document.createElement('div');
+        title.className = 'category-title';
+        title.innerText = categoryName;
+        container.appendChild(title);
+
+        // Buat Slider Container
+        const slider = document.createElement('div');
+        slider.className = 'photo-slider';
         
-        try {
-            const response = await fetch(url);
-            const blob = await response.blob();
-            const blobUrl = window.URL.createObjectURL(blob);
+        urls.forEach(url => {
+            const card = document.createElement('div');
+            card.className = 'photo-card';
             
+            // Cek apakah ini video (Folder Animated)
+            const isVideo = categoryName === "Animated";
+
+            if (isVideo) {
+                // TRIK THUMBNAIL: Tambahkan #t=1.0 di akhir URL video
+                // Ini memaksa browser menampilkan frame detik ke-1 sebagai gambar diam
+                card.innerHTML = `
+                    <video src="${url}#t=1.0" preload="metadata" playsinline muted></video>
+                    <div class="play-icon"></div>
+                `;
+            } else {
+                // Foto Biasa
+                card.innerHTML = `<img src="${url}" loading="lazy">`;
+            }
+
+            // Event Klik Buka Modal
+            card.onclick = () => openModal(url, isVideo);
+            slider.appendChild(card);
+        });
+
+        container.appendChild(slider);
+    }
+
+    // --- MODAL & DOWNLOAD LOGIC ---
+
+    function openModal(url, isVideo) {
+        const modal = document.getElementById('photoModal');
+        const wrapper = document.getElementById('modal-media-wrapper');
+        const btn = document.getElementById('downloadBtn');
+
+        // Bersihkan konten lama
+        wrapper.innerHTML = '';
+
+        if (isVideo) {
+            // Tampilkan Player Video
+            const video = document.createElement('video');
+            video.src = url;
+            video.controls = true;
+            video.autoplay = true;
+            video.playsInline = true;
+            video.loop = true;
+            wrapper.appendChild(video);
+        } else {
+            // Tampilkan Gambar
+            const img = document.createElement('img');
+            img.src = url;
+            wrapper.appendChild(img);
+        }
+
+        // Atur Tombol Download
+        btn.onclick = (e) => {
+            e.preventDefault();
+            handleDownload(url, isVideo);
+        };
+        btn.innerHTML = "SIMPAN"; // Reset teks tombol
+
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden'; // Kunci scroll belakang
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('photoModal');
+        const wrapper = document.getElementById('modal-media-wrapper');
+        
+        // Stop video jika ada agar suara mati
+        wrapper.innerHTML = ''; 
+        
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    // --- LOGIKA DOWNLOAD YANG DIPERBAIKI (ANTI CORRUPT) ---
+    async function handleDownload(url, isVideo) {
+        const btn = document.getElementById('downloadBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = "MENGUNDUH...";
+        btn.style.opacity = "0.7";
+
+        try {
+            // Metode 1: Fetch Blob (Cara Bersih)
+            const response = await fetch(url);
+            
+            // Cek apakah fetch berhasil
+            if (!response.ok) throw new Error("Network response was not ok");
+            
+            const blob = await response.blob();
+            
+            // Validasi ukuran file (Video tidak mungkin di bawah 1KB)
+            if (blob.size < 1000) throw new Error("File corrupt/too small");
+
+            const blobUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = blobUrl;
-            a.download = "CaptureHistory_" + Date.now() + (url.includes("gif") ? ".gif" : ".jpg");
+            // Paksa nama file MP4 jika itu video
+            const ext = isVideo ? ".mp4" : ".jpg";
+            a.download = "CaptureHistory_" + Date.now() + ext;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             window.URL.revokeObjectURL(blobUrl);
-        } catch (err) {
-            // Fallback jika CORS bermasalah
-            window.open(url, '_blank');
-        } finally {
-            btn.innerText = originalText;
+
+            btn.innerHTML = "BERHASIL ✅";
+            setTimeout(() => { btn.innerHTML = originalText; btn.style.opacity = "1"; }, 2000);
+
+        } catch (error) {
+            // Metode 2: Fallback (Jika Metode 1 Gagal/Corrupt)
+            // Ini akan membuka link langsung di tab baru, browser HP yang akan menangani downloadnya
+            console.warn("Download JS gagal, menggunakan direct link...", error);
+            
+            // Membuat link direct sementara
+            const tempLink = document.createElement('a');
+            tempLink.href = url;
+            tempLink.target = '_blank'; // Wajib new tab agar halaman tidak tertutup
+            tempLink.download = '';     // Trigger download browser
+            document.body.appendChild(tempLink);
+            tempLink.click();
+            document.body.removeChild(tempLink);
+
+            btn.innerHTML = "CEK BROWSER";
+            setTimeout(() => { btn.innerHTML = originalText; btn.style.opacity = "1"; }, 2000);
         }
     }
 
-    // 4. MODAL CONTROL
-    function openModal(url) {
-        const modal = document.getElementById('photoModal');
-        const img = document.getElementById('modalImg');
-        const btn = document.getElementById('downloadBtn');
-
-        img.src = url;
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden'; // Lock scroll
-
-        btn.onclick = (e) => {
-            e.preventDefault();
-            forceDownload(url);
-        };
-    }
-
-    function closeModal() {
-        document.getElementById('photoModal').style.display = 'none';
-        document.body.style.overflow = 'auto';
-        document.getElementById('modalImg').src = '';
-    }
-
-    // 5. ANIMASI GESER (Intersection Observer)
-    function setupObserver() {
+    // Animasi Scale saat scroll (Kosmetik)
+    function initObserver() {
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     entry.target.style.transform = "scale(1)";
                 } else {
-                    entry.target.style.transform = "scale(0.9)";
+                    entry.target.style.transform = "scale(0.95)";
                 }
             });
-        }, { threshold: 0.6 });
+        }, { threshold: 0.5 });
 
         document.querySelectorAll('.photo-card').forEach(card => observer.observe(card));
     }
 
-    initGallery();
+    // Mulai Aplikasi
+    initApp();
 </script>
 </body>
 </html>
